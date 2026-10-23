@@ -1,0 +1,447 @@
+---
+/**
+ * Dashboard → Display Modes (ADR 0001; Tapestry ADR 0046), laid out like Template Management's Templates:
+ * the site's modes with where each is used. Full and Teaser are built in (never renamed or deleted); admins
+ * add up to 16 modes in all, rename and delete their own. Editors can look. Plain forms posting to
+ * /_fabric/modes, which redirects back with `saved` or an error code.
+ */
+import { hasPermission } from '@nascencestudio/tapestry';
+import {
+	displayModesEnabled,
+	isBuiltInMode,
+	loadModes,
+	loadModeUsage,
+	MAX_MODES,
+	MODE_NAME_MAX,
+} from '@nascencestudio/tapestry/modes';
+import { getViewer } from '@nascencestudio/tapestry/page';
+import { isModeError, MODE_ERRORS } from '../modes-errors.js';
+import { MODES_ROUTE } from '../routes.js';
+
+const here = Astro.url.pathname;
+const viewer = await getViewer(Astro);
+const isAdmin = hasPermission(viewer.permissionLevel, 'admin');
+const enabled = displayModesEnabled();
+const [modes, usage] = await Promise.all([loadModes(), loadModeUsage().catch(() => new Map())]);
+const saved = Astro.url.searchParams.has('saved');
+const errorCode = Astro.url.searchParams.get('error');
+const error = isModeError(errorCode) ? MODE_ERRORS[errorCode] : null;
+const full = modes.length >= MAX_MODES;
+const usageText = (key: string) => {
+	const u = usage.get(key) ?? { components: 0, templates: 0 };
+	if (u.components === 0) return 'Not used in a template yet';
+	const c = `${u.components} ${u.components === 1 ? 'component' : 'components'}`;
+	const t = `${u.templates} ${u.templates === 1 ? 'template' : 'templates'}`;
+	return `Used by ${c} in ${t}`;
+};
+const deleteWarning = (key: string) => {
+	const u = usage.get(key) ?? { components: 0, templates: 0 };
+	return `Template components lose this display mode (${u.components} in ${u.templates} ${u.templates === 1 ? 'template' : 'templates'}); those shown only in it go back to Full. Pages keep what they entered for it, but it's no longer shown.`;
+};
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+
+<div class="fabric-modes" data-fabric-modes>
+	{saved && <p class="fabric-modes__notice" role="status" data-fabric-modes-saved>Saved.</p>}
+	{!isAdmin && (
+		<p class="fabric-modes__notice" role="note" data-fabric-modes-readonly>
+			Only admins can change display modes. You can choose them for template components in Template Management.
+		</p>
+	)}
+	{error && (
+		<p class="fabric-modes__notice fabric-modes__notice--error" role="alert" data-fabric-modes-error>
+			{error}
+		</p>
+	)}
+	{!enabled && (
+		<p class="fabric-modes__notice fabric-modes__notice--error" role="alert">
+			Display modes are turned off in Tapestry's options (<code>displayModes: false</code>).
+		</p>
+	)}
+
+	<section class="fabric-modes__group" aria-labelledby="fabric-modes-title">
+		<h2 class="fabric-modes__title" id="fabric-modes-title">Display Modes</h2>
+		<p class="fabric-modes__muted">
+			The ways a page can be shown. <strong>Full</strong> is the page itself; <strong>Teaser</strong> is how it looks
+			in a list. In a template, every component has a <strong>Shown in</strong> setting, and a content area shown in
+			several modes gets a tab per mode on its pages. A <strong>Page list</strong> shows other pages in the mode you
+			choose.
+		</p>
+		<ul class="fabric-modes__list">
+			{modes.map((mode) => {
+				const builtIn = isBuiltInMode(mode.key);
+				const used = (usage.get(mode.key)?.components ?? 0) > 0;
+				const deleteDialog = `fabric-delete-${mode.key}`;
+				return (
+					<li class="fabric-modes__item fabric-modes__item--with-bar" data-fabric-mode={mode.key}>
+						<div class="fabric-modes__row">
+							<strong class="fabric-modes__name">{mode.name}</strong>
+							{builtIn && (
+								<span class="fabric-modes__status" data-fabric-mode-built-in>
+									{mode.key === 'full' ? 'Built in · the page itself' : 'Built in'}
+								</span>
+							)}
+							<span class="fabric-modes__status" data-fabric-mode-usage>
+								{usageText(mode.key)}
+							</span>
+						</div>
+						{isAdmin && !builtIn && (
+							<form method="post" action={MODES_ROUTE} class="fabric-modes__inline fabric-modes__inline--wrap">
+								<input type="hidden" name="return" value={here} />
+								<input type="hidden" name="action" value="rename" />
+								<input type="hidden" name="key" value={mode.key} />
+								<label class="fabric-modes__field">
+									<span>Name</span>
+									<input class="fabric-modes__input" name="name" value={mode.name} maxlength={MODE_NAME_MAX} required />
+								</label>
+								<button type="submit" class="fabric-modes__button">Save</button>
+							</form>
+						)}
+						<div class="fabric-modes__bar">
+							<span class="fabric-modes__bar-status">
+								Key: <code>{mode.key}</code> (CSS classes: <code>fabric-list--{mode.key}</code>,{' '}
+								<code>fabric-item--{mode.key}</code>)
+							</span>
+							{isAdmin && !builtIn && (
+								used ? (
+									<>
+										<button
+											type="button"
+											class="fabric-modes__button fabric-modes__button--danger"
+											aria-haspopup="dialog"
+											data-tapestry-open-dialog={deleteDialog}
+											data-fabric-mode-delete
+										>
+											Delete display mode
+										</button>
+										<dialog class="fabric-modes__dialog" id={deleteDialog} aria-labelledby={`${deleteDialog}-title`} data-fabric-delete-dialog>
+											<form method="post" action={MODES_ROUTE} class="fabric-modes__dialog-form">
+												<h3 class="fabric-modes__dialog-title" id={`${deleteDialog}-title`}>
+													Delete “{mode.name}”?
+												</h3>
+												<p class="fabric-modes__warning">{deleteWarning(mode.key)}</p>
+												<input type="hidden" name="return" value={here} />
+												<input type="hidden" name="action" value="delete" />
+												<input type="hidden" name="key" value={mode.key} />
+												<label class="fabric-modes__field">
+													<span>Type <strong>{mode.name}</strong> to confirm</span>
+													<input
+														class="fabric-modes__input"
+														name="confirm"
+														autocomplete="off"
+														spellcheck="false"
+														required
+														data-tapestry-confirm-name={mode.name}
+													/>
+												</label>
+												<div class="fabric-modes__dialog-actions">
+													<button type="button" class="fabric-modes__button" data-tapestry-close-dialog>
+														Cancel
+													</button>
+													<button
+														type="submit"
+														class="fabric-modes__button fabric-modes__button--danger"
+														disabled
+														data-tapestry-confirm-submit
+													>
+														Delete display mode
+													</button>
+												</div>
+											</form>
+										</dialog>
+									</>
+								) : (
+									<form method="post" action={MODES_ROUTE}>
+										<input type="hidden" name="return" value={here} />
+										<input type="hidden" name="action" value="delete" />
+										<input type="hidden" name="key" value={mode.key} />
+										<button type="submit" class="fabric-modes__button fabric-modes__button--danger" data-fabric-mode-delete>
+											Delete display mode
+										</button>
+									</form>
+								)
+							)}
+						</div>
+					</li>
+				);
+			})}
+		</ul>
+		{isAdmin && enabled && (
+			full ? (
+				<p class="fabric-modes__muted" data-fabric-modes-full>
+					This site has {MAX_MODES} display modes, the most it can have.
+				</p>
+			) : (
+				<form method="post" action={MODES_ROUTE} class="fabric-modes__create" data-fabric-mode-create>
+					<input type="hidden" name="return" value={here} />
+					<input type="hidden" name="action" value="add" />
+					<label class="fabric-modes__field">
+						<span>New display mode</span>
+						<input class="fabric-modes__input" name="name" placeholder="e.g. Card" maxlength={MODE_NAME_MAX} required />
+					</label>
+					<button type="submit" class="fabric-modes__button">Add</button>
+					<span class="fabric-modes__muted">{modes.length} of {MAX_MODES}</span>
+				</form>
+			)
+		)}
+	</section>
+</div>
+
+<style>
+	.fabric-modes {
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+		max-width: 60rem;
+	}
+	.fabric-modes__notice {
+		margin: 0;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.5rem;
+		border: 1px solid var(--success-base, hsl(142 60% 35%));
+	}
+	.fabric-modes__notice--error {
+		border-color: var(--danger-base, hsl(339 80% 50%));
+	}
+	.fabric-modes__group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+		padding: 1rem;
+		border: 1px solid var(--border, hsl(263 5% 68%));
+		border-radius: 0.5rem;
+	}
+	.fabric-modes__title {
+		margin: 0;
+		font-size: 1.125rem;
+	}
+	.fabric-modes__subtitle {
+		margin: 0 0 0.5rem;
+		font-size: 1rem;
+	}
+	.fabric-modes__list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.fabric-modes__item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.75rem;
+		border-radius: 0.5rem;
+		background: var(--background-step-1, transparent);
+	}
+	.fabric-modes__row,
+	.fabric-modes__inline,
+	.fabric-modes__create {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem 0.75rem;
+	}
+	.fabric-modes__inline--wrap,
+	.fabric-modes__create {
+		align-items: flex-end;
+	}
+	.fabric-modes__name {
+		margin-right: auto;
+	}
+	.fabric-modes__muted {
+		margin: 0;
+		color: var(--text-muted, inherit);
+		font-size: 0.875rem;
+		line-height: 1.5;
+	}
+	.fabric-modes__status {
+		padding: 0.05rem 0.5rem;
+		font-size: 0.75rem;
+		border: 1px solid var(--border, hsl(263 5% 68%));
+		border-radius: 999px;
+	}
+	.fabric-modes__status[data-status='published'] {
+		border-color: var(--success-base, hsl(142 60% 35%));
+	}
+	.fabric-modes__status[data-status='changed'] {
+		border-color: var(--warning-base, hsl(38 92% 50%));
+	}
+	.fabric-modes__field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.875rem;
+	}
+	.fabric-modes__field > span {
+		font-weight: 600;
+	}
+	.fabric-modes__input {
+		font: inherit;
+		padding: 0.4rem 0.6rem;
+		border-radius: 0.375rem;
+		border: 1px solid var(--border, hsl(263 5% 68%));
+		background: var(--background-base, transparent);
+		color: inherit;
+	}
+	.fabric-modes__button {
+		display: inline-flex;
+		align-items: center;
+		width: fit-content;
+		font: inherit;
+		font-size: 0.875rem;
+		padding: 0.4rem 0.8rem;
+		border-radius: 0.375rem;
+		border: 1px solid var(--border, hsl(263 5% 68%));
+		background: transparent;
+		color: inherit;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.fabric-modes__button:disabled {
+		opacity: 0.55;
+		cursor: default;
+	}
+	.fabric-modes__button--danger {
+		color: #fff;
+		background: var(--danger-base, hsl(339 80% 45%));
+		border-color: var(--danger-base, hsl(339 80% 45%));
+	}
+	.fabric-modes__button--danger:hover:not(:disabled) {
+		filter: brightness(1.1);
+	}
+	.fabric-modes__item--with-bar {
+		padding-bottom: 0;
+		overflow: hidden;
+	}
+	.fabric-modes__bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem 0.75rem;
+		margin: 0.25rem -0.75rem 0;
+		padding: 0.6rem 0.75rem;
+		background: var(--background-step-2, rgb(0 0 0 / 0.08));
+	}
+	.fabric-modes__bar-status {
+		margin-right: auto;
+		color: var(--text-muted, inherit);
+		font-size: 0.875rem;
+	}
+	.fabric-modes__button--primary {
+		color: var(--text-inverted, #fff);
+		background: var(--primary-base, hsl(259 74% 45%));
+		border-color: var(--primary-base, hsl(259 74% 45%));
+	}
+	.fabric-modes__button:focus-visible,
+	.fabric-modes__input:focus-visible {
+		outline: 2px solid var(--primary-base, hsl(259 74% 45%));
+		outline-offset: 2px;
+	}
+	.fabric-modes__sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+	}
+	/* "Used on N pages": a badge that opens the list (disabled at 0). */
+	.fabric-modes__usage {
+		font: inherit;
+		font-size: 0.75rem;
+		color: inherit;
+		background: none;
+		cursor: pointer;
+	}
+	.fabric-modes__usage:hover:not(:disabled) {
+		border-color: var(--primary-base, hsl(259 74% 45%));
+	}
+	.fabric-modes__usage:disabled {
+		cursor: default;
+		color: var(--text-muted, inherit);
+	}
+	.fabric-modes__usage:focus-visible {
+		outline: 2px solid var(--primary-base, hsl(259 74% 45%));
+		outline-offset: 2px;
+	}
+	.fabric-modes__dialog {
+		width: min(32rem, calc(100vw - 2rem));
+		padding: 1.25rem;
+		color: var(--text-normal, inherit);
+		background: var(--background-base, #fff);
+		border: 1px solid var(--border, hsl(263 5% 68%));
+		border-radius: var(--radius-md, 0.5rem);
+		box-shadow: 0 16px 48px rgb(0 0 0 / 0.4);
+	}
+	.fabric-modes__dialog::backdrop {
+		background: rgb(0 0 0 / 0.55);
+	}
+	.fabric-modes__dialog-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 0.75rem;
+	}
+	.fabric-modes__dialog-title {
+		margin: 0;
+		font-size: 1.0625rem;
+	}
+	.fabric-modes__dialog-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+	}
+	.fabric-modes__dialog-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.5rem;
+	}
+	.fabric-modes__pages {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin: 0;
+		padding-left: 1.1rem;
+	}
+	.fabric-modes__pages a {
+		color: inherit;
+		font-weight: 600;
+	}
+	.fabric-modes__warning {
+		margin: 0;
+		padding: 0.6rem 0.75rem;
+		border: 1px solid var(--border, hsl(263 5% 68%));
+		border-left: 4px solid var(--danger-base, hsl(339 80% 45%));
+		border-radius: var(--radius-md, 0.5rem);
+	}
+</style>
+
+<script>
+	// Dialogs (deleting a mode in use) and the typed-name check, as on Template Management.
+	const syncConfirm = (input: HTMLInputElement) => {
+		const submit = input.form?.querySelector<HTMLButtonElement>('[data-tapestry-confirm-submit]');
+		if (submit) submit.disabled = input.value !== input.dataset.tapestryConfirmName;
+	};
+	for (const button of document.querySelectorAll<HTMLElement>('[data-tapestry-open-dialog]')) {
+		button.addEventListener('click', () => {
+			const dialog = document.getElementById(button.dataset.tapestryOpenDialog ?? '');
+			if (!(dialog instanceof HTMLDialogElement)) return;
+			// Each opening starts empty (cleared here rather than on close, which isn't reliable everywhere).
+			for (const input of dialog.querySelectorAll<HTMLInputElement>('[data-tapestry-confirm-name]')) {
+				input.value = '';
+				syncConfirm(input);
+			}
+			dialog.showModal();
+		});
+	}
+	for (const button of document.querySelectorAll<HTMLElement>('[data-tapestry-close-dialog]')) {
+		button.addEventListener('click', () => button.closest('dialog')?.close());
+	}
+	for (const input of document.querySelectorAll<HTMLInputElement>('[data-tapestry-confirm-name]')) {
+		input.addEventListener('input', () => syncConfirm(input));
+		syncConfirm(input);
+	}
+</script>

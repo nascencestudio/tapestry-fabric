@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 72" width="128" height="72">
+	<title>Page list</title>
+	<rect width="128" height="72" rx="6" fill="#eef0f6"/>
+	<rect x="10" y="12" width="32" height="48" rx="3" fill="#d9dceb"/>
+	<rect x="48" y="12" width="32" height="48" rx="3" fill="#d9dceb"/>
+	<rect x="86" y="12" width="32" height="48" rx="3" fill="#d9dceb"/>
+	<rect x="14" y="16" width="24" height="16" rx="2" fill="#b9bfd6"/>
+	<rect x="52" y="16" width="24" height="16" rx="2" fill="#b9bfd6"/>
+	<rect x="90" y="16" width="24" height="16" rx="2" fill="#b9bfd6"/>
+	<rect x="14" y="37" width="20" height="4" rx="2" fill="#7d86a8"/>
+	<rect x="52" y="37" width="20" height="4" rx="2" fill="#7d86a8"/>
+	<rect x="90" y="37" width="20" height="4" rx="2" fill="#7d86a8"/>
+	<rect x="14" y="45" width="24" height="3" rx="1.5" fill="#9aa2bf"/>
+	<rect x="52" y="45" width="24" height="3" rx="1.5" fill="#9aa2bf"/>
+	<rect x="90" y="45" width="24" height="3" rx="1.5" fill="#9aa2bf"/>
+	<rect x="14" y="51" width="16" height="3" rx="1.5" fill="#9aa2bf"/>
+	<rect x="52" y="51" width="16" height="3" rx="1.5" fill="#9aa2bf"/>
+	<rect x="90" y="51" width="16" height="3" rx="1.5" fill="#9aa2bf"/>
+</svg>

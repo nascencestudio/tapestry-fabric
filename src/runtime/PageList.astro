@@ -1,0 +1,112 @@
+---
+import config from 'virtual:tapestry/config';
+import type { TapestryDocument } from '@nascencestudio/tapestry';
+/**
+ * The Page list (ADR 0001): pages visitors can see that match the settings (any category, with
+ * subcategories, AND any tag AND the template), in order, each shown in the display mode through its
+ * template (Tapestry ADR 0046). Never the page it's on (or its translations); lists inside listed pages don't
+ * render. A page with nothing in the mode becomes a simple card: its title and, if trimming is on, the start
+ * of its Full text as plain text. In the editor's canvas a note says what matched; items can't be edited there.
+ * Classes on everything: fabric-list(--mode), fabric-item(--mode), fabric-card, fabric-title, fabric-summary,
+ * fabric-link, fabric-empty, fabric-note.
+ */
+import Document from '@nascencestudio/tapestry/Document.astro';
+import { loadModes } from '@nascencestudio/tapestry/modes';
+import {
+	currentPageId,
+	inEditorCanvas,
+	type ListedPage,
+	listPagesForLists,
+	pageInMode,
+	pageLanguage,
+	pageText,
+} from '@nascencestudio/tapestry/page';
+import { excerpt, matches, modeClass, parseSettings, sortPages, withoutLists, withSubcategories } from '../list.js';
+import { loadCategories } from './terms.js';
+
+const settings = parseSettings(Astro.props as Record<string, unknown>);
+const canvas = inEditorCanvas(Astro);
+const hostId = currentPageId(Astro);
+const mode = modeClass(settings.mode);
+
+let pages: ListedPage[] = [];
+try {
+	pages = await listPagesForLists();
+} catch (error) {
+	console.error('[tapestry-fabric] listing pages failed', error);
+}
+// The list page's language: from getPage(); in the editor, the page being edited's (default when unpublished).
+const host = hostId ? pages.find((p) => p.id === hostId) : undefined;
+const lang =
+	pageLanguage(Astro) ?? host?.lang ?? (config.languages.length > 1 ? (config.languages[0]?.code ?? null) : null);
+const categories =
+	settings.categories.length > 0
+		? withSubcategories(settings.categories, await loadCategories().catch(() => []))
+		: new Set<number>();
+const matched = sortPages(
+	pages.filter((page) => matches(page, settings, { categories, hostId, lang })),
+	settings.sort,
+);
+const shown = matched.slice(0, settings.count);
+
+interface Item {
+	page: ListedPage;
+	document: TapestryDocument | null;
+	summary: string;
+}
+const items: Item[] = await Promise.all(
+	shown.map(async (page): Promise<Item> => {
+		const inMode = await pageInMode(page, settings.mode).catch(() => null);
+		if (inMode && !inMode.empty) return { page, document: withoutLists(inMode.document), summary: '' };
+		return { page, document: null, summary: settings.trim > 0 ? excerpt(pageText(page), settings.trim) : '' };
+	}),
+);
+
+// The editor's note: what matched, and how many are simple cards (nothing in the mode).
+const modeName = canvas
+	? ((await loadModes().catch(() => [])).find((m) => m.key === settings.mode)?.name ?? settings.mode)
+	: '';
+const cards = items.filter((item) => !item.document).length;
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const note =
+	matched.length === 0
+		? ''
+		: `Matches ${plural(matched.length, 'page')}${matched.length > shown.length ? `, showing ${shown.length}` : ''}: ${shown
+				.slice(0, 5)
+				.map((p) => p.title || p.path)
+				.join(
+					', ',
+				)}${shown.length > 5 ? ', …' : ''}.${cards > 0 ? ` ${plural(cards, 'page')} with nothing in ${modeName}: shown as a simple card.` : ''}`;
+---
+
+<div class={`fabric-list fabric-list--${mode}`} data-fabric-list>
+	{canvas && note && <p class="fabric-note" data-fabric-note>{note}</p>}
+	{
+		items.map((item) =>
+			item.document ? (
+				<article class={`fabric-item fabric-item--${mode}`} data-fabric-item={item.page.id}>
+					<Document document={item.document} />
+					{settings.link && (
+						<a class="fabric-link" href={item.page.path} aria-label={`Read more: ${item.page.title}`}>
+							Read more
+						</a>
+					)}
+				</article>
+			) : (
+				<article class={`fabric-item fabric-item--${mode} fabric-card`} data-fabric-item={item.page.id}>
+					<h3 class="fabric-title">
+						{settings.link ? (
+							<a class="fabric-link" href={item.page.path}>
+								{item.page.title}
+							</a>
+						) : (
+							item.page.title
+						)}
+					</h3>
+					{item.summary && <p class="fabric-summary">{item.summary}</p>}
+				</article>
+			),
+		)
+	}
+	{canvas && items.length === 0 && <p class="fabric-empty" data-fabric-empty>No pages match these settings.</p>}
+</div>
