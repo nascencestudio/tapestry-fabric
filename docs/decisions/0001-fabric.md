@@ -94,3 +94,6 @@ As decided, except:
   `__status`, `__next`). Each list has its own URL parameter, its node id (`?<id>=2`; Tapestry's `withNodeId`),
   so several lists on one page page on their own and other parameters are kept. Page 1 is the plain address;
   nonsense or out-of-range numbers show page 1. In the editor's canvas the links go nowhere.
+- **Classes follow the mode's name** (2026-10-30, the user's bug report): `fabric-list--<name>` and
+  `fabric-item--<name>` use the mode's current name (Tapestry's `modeClassName()`), so renaming a mode renames
+  them; the Display Modes page shows the classes, not the key.

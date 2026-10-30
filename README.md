@@ -17,9 +17,10 @@ looks with a template, and show it anywhere as a teaser, card or anything else, 
   it's on, and lists inside listed pages don't render (no loops).
 - **Unstyled, with classes on everything:** `fabric-list fabric-list--teaser`, `fabric-item
   fabric-item--teaser`, `fabric-card`, `fabric-title`, `fabric-summary`, `fabric-link`, `fabric-pager`
-  (`__previous`, `__status`, `__next`). No JavaScript reaches your visitors.
-- **Preview a mode while building a template:** "Preview as: All | Full | Teaser" on Template Management's
-  canvas shows only what that mode shows.
+  (`__previous`, `__status`, `__next`). A mode's classes come from its name (a mode called Big card gives
+  `fabric-list--big-card`; renaming it renames them). No JavaScript reaches your visitors.
+- **Preview a mode while building a template:** the **Display mode** button on Template Management's canvas
+  shows only what the chosen mode shows (All shows everything).
 
 ## Requirements
 

@@ -5,7 +5,7 @@
 export const MODE_ERRORS = {
 	off: 'Display modes are off on this site.',
 	'name-required': 'Give it a name.',
-	'name-taken': 'A display mode with that name already exists.',
+	'name-taken': 'A display mode with that name (or the same CSS class) already exists.',
 	'too-many': 'A site can have at most 16 display modes.',
 	'not-found': 'That display mode no longer exists.',
 	'built-in': 'Full and Teaser can’t be renamed or deleted.',

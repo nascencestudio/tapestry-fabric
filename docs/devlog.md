@@ -13,3 +13,8 @@ Short notes for this repo; the full record is in tapestry-playground's devlog.
 
 - "Show page links" on the Page list: Number of pages becomes the page size; Previous / Page n of m / Next,
   each list with its own parameter (its node id, Tapestry's `withNodeId`). 15 unit tests.
+
+## 2026-10-30: classes follow names
+
+- Renaming a mode didn't change its CSS classes (they used the key): now they come from the name; names with
+  the same class are refused. The Display Modes page shows the classes instead of the key.

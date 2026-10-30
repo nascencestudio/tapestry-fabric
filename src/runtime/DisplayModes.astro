@@ -13,6 +13,7 @@ import {
 	loadModeUsage,
 	MAX_MODES,
 	MODE_NAME_MAX,
+	modeClassName,
 } from '@nascencestudio/tapestry/modes';
 import { getViewer } from '@nascencestudio/tapestry/page';
 import { isModeError, MODE_ERRORS } from '../modes-errors.js';
@@ -99,8 +100,8 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 						)}
 						<div class="fabric-modes__bar">
 							<span class="fabric-modes__bar-status">
-								Key: <code>{mode.key}</code> (CSS classes: <code>fabric-list--{mode.key}</code>,{' '}
-								<code>fabric-item--{mode.key}</code>)
+								CSS classes: <code>fabric-list--{modeClassName(mode.name) || mode.key}</code>,{' '}
+								<code>fabric-item--{modeClassName(mode.name) || mode.key}</code>
 							</span>
 							{isAdmin && !builtIn && (
 								used ? (

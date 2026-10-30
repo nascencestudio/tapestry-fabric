@@ -12,7 +12,7 @@ import type { TapestryDocument } from '@nascencestudio/tapestry';
  * fabric-link, fabric-empty, fabric-note, fabric-pager(__previous, __status, __next).
  */
 import Document from '@nascencestudio/tapestry/Document.astro';
-import { loadModes } from '@nascencestudio/tapestry/modes';
+import { loadModes, modeClassName } from '@nascencestudio/tapestry/modes';
 import {
 	currentPageId,
 	inEditorCanvas,
@@ -39,7 +39,9 @@ import { loadCategories } from './terms.js';
 const settings = parseSettings(Astro.props as Record<string, unknown>);
 const canvas = inEditorCanvas(Astro);
 const hostId = currentPageId(Astro);
-const mode = modeClass(settings.mode);
+// The mode's classes follow its current name (`Big card` → fabric-list--big-card); its key never changes.
+const modeEntry = (await loadModes().catch(() => [])).find((m) => m.key === settings.mode);
+const mode = (modeEntry && modeClassName(modeEntry.name)) || modeClass(settings.mode);
 
 let pages: ListedPage[] = [];
 try {
@@ -81,9 +83,7 @@ const items: Item[] = await Promise.all(
 );
 
 // The editor's note: what matched, and how many are simple cards (nothing in the mode).
-const modeName = canvas
-	? ((await loadModes().catch(() => [])).find((m) => m.key === settings.mode)?.name ?? settings.mode)
-	: '';
+const modeName = modeEntry?.name ?? settings.mode;
 const cards = items.filter((item) => !item.document).length;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const note =
