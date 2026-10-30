@@ -10,14 +10,16 @@ looks with a template, and show it anywhere as a teaser, card or anything else, 
   a **Shown in** setting (Full by default). A content area shown in several modes gets a **tab per mode**
   on its pages: authors write the article in the Full tab and the summary in the Teaser tab.
 - **The Page list component:** pages by category (subcategories count too), tag and template, newest
-  first (or oldest, or by title), up to 50, each shown in the display mode you choose and linked to the
-  page. A page with nothing in that mode becomes a simple card: its title and, if you like, the start of
+  first (or oldest, or by title), up to 50 at a time, with Previous and Next links if you like, each shown
+  in the display mode you choose and linked to the page. A page with nothing in that mode becomes a simple card: its title and, if you like, the start of
   its text (plain text, trimmed at a word).
 - **Safe by design:** only pages visitors may see, in the page's language. A list never shows the page
   it's on, and lists inside listed pages don't render (no loops).
 - **Unstyled, with classes on everything:** `fabric-list fabric-list--teaser`, `fabric-item
-  fabric-item--teaser`, `fabric-card`, `fabric-title`, `fabric-summary`, `fabric-link`. No JavaScript
-  reaches your visitors.
+  fabric-item--teaser`, `fabric-card`, `fabric-title`, `fabric-summary`, `fabric-link`, `fabric-pager`
+  (`__previous`, `__status`, `__next`). No JavaScript reaches your visitors.
+- **Preview a mode while building a template:** "Preview as: All | Full | Teaser" on Template Management's
+  canvas shows only what that mode shows.
 
 ## Requirements
 

@@ -30,6 +30,8 @@ export function fabricComponents(options: FabricComponentsOptions = {}): Compone
 			description: 'Other pages by category, tag and template, shown in a display mode (e.g. teasers).',
 			category: options.category ?? 'Lists',
 			component: file('./runtime/PageList.astro'),
+			// Its id names its page parameter (`?<id>=2`), so several lists on one page page on their own.
+			withNodeId: true,
 			thumbnail: file('./thumbnails/page-list.svg'),
 			props: {
 				categories: {
@@ -66,6 +68,7 @@ export function fabricComponents(options: FabricComponentsOptions = {}): Compone
 				count: {
 					type: 'number',
 					label: 'Number of pages',
+					description: 'With page links: how many per list page.',
 					default: 5,
 					min: 1,
 					max: LIMITS.maxCount,
@@ -80,6 +83,12 @@ export function fabricComponents(options: FabricComponentsOptions = {}): Compone
 					type: 'boolean',
 					label: 'Link each item to its page',
 					default: true,
+				},
+				pager: {
+					type: 'boolean',
+					label: 'Show page links',
+					description: 'Previous and Next when more pages match than the number shown.',
+					default: false,
 				},
 				trim: {
 					type: 'number',

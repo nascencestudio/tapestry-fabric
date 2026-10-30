@@ -7,8 +7,9 @@ import type { TapestryDocument } from '@nascencestudio/tapestry';
  * template (Tapestry ADR 0046). Never the page it's on (or its translations); lists inside listed pages don't
  * render. A page with nothing in the mode becomes a simple card: its title and, if trimming is on, the start
  * of its Full text as plain text. In the editor's canvas a note says what matched; items can't be edited there.
+ * With page links, `count` is the page size and the list's own parameter (`?<node id>=2`) picks the page.
  * Classes on everything: fabric-list(--mode), fabric-item(--mode), fabric-card, fabric-title, fabric-summary,
- * fabric-link, fabric-empty, fabric-note.
+ * fabric-link, fabric-empty, fabric-note, fabric-pager(__previous, __status, __next).
  */
 import Document from '@nascencestudio/tapestry/Document.astro';
 import { loadModes } from '@nascencestudio/tapestry/modes';
@@ -21,7 +22,18 @@ import {
 	pageLanguage,
 	pageText,
 } from '@nascencestudio/tapestry/page';
-import { excerpt, matches, modeClass, parseSettings, sortPages, withoutLists, withSubcategories } from '../list.js';
+import {
+	excerpt,
+	matches,
+	modeClass,
+	pageCount,
+	pageHref,
+	pageNumber,
+	parseSettings,
+	sortPages,
+	withoutLists,
+	withSubcategories,
+} from '../list.js';
 import { loadCategories } from './terms.js';
 
 const settings = parseSettings(Astro.props as Record<string, unknown>);
@@ -47,7 +59,13 @@ const matched = sortPages(
 	pages.filter((page) => matches(page, settings, { categories, hostId, lang })),
 	settings.sort,
 );
-const shown = matched.slice(0, settings.count);
+// Paging (with page links): this list's own parameter, `?<node id>=2`.
+const key = typeof Astro.props.nodeId === 'string' ? Astro.props.nodeId : '';
+const listPages = settings.pager ? pageCount(matched.length, settings.count) : 1;
+const current = settings.pager && key && !canvas ? pageNumber(Astro.url.searchParams.get(key), listPages) : 1;
+const shown = matched.slice((current - 1) * settings.count, current * settings.count);
+// In the editor's canvas the links go nowhere (its address is the render endpoint's).
+const href = (n: number) => (canvas || !key ? '#' : pageHref(Astro.url, key, n));
 
 interface Item {
 	page: ListedPage;
@@ -71,7 +89,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const note =
 	matched.length === 0
 		? ''
-		: `Matches ${plural(matched.length, 'page')}${matched.length > shown.length ? `, showing ${shown.length}` : ''}: ${shown
+		: `Matches ${plural(matched.length, 'page')}${matched.length > shown.length ? `, showing ${shown.length}${listPages > 1 ? ` per list page (${listPages} list pages)` : ''}` : ''}: ${shown
 				.slice(0, 5)
 				.map((p) => p.title || p.path)
 				.join(
@@ -109,4 +127,23 @@ const note =
 		)
 	}
 	{canvas && items.length === 0 && <p class="fabric-empty" data-fabric-empty>No pages match these settings.</p>}
+	{
+		listPages > 1 && (
+			<nav class="fabric-pager" aria-label="List pages" data-fabric-pager>
+				{current > 1 && (
+					<a class="fabric-pager__previous" href={href(current - 1)} rel="prev">
+						Previous
+					</a>
+				)}
+				<span class="fabric-pager__status" aria-current="page">
+					Page {current} of {listPages}
+				</span>
+				{current < listPages && (
+					<a class="fabric-pager__next" href={href(current + 1)} rel="next">
+						Next
+					</a>
+				)}
+			</nav>
+		)
+	}
 </div>

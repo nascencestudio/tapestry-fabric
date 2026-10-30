@@ -31,6 +31,8 @@ export interface ListSettings {
 	link: boolean;
 	/** Characters of Full text for an empty teaser; 0: off. */
 	trim: number;
+	/** Previous/Next links when more pages match than `count` (then `count` is the page size). */
+	pager: boolean;
 }
 
 const ids = (value: unknown): number[] =>
@@ -53,6 +55,7 @@ export function parseSettings(props: Record<string, unknown>): ListSettings {
 		sort,
 		link: props.link !== false,
 		trim: bounded(props.trim, 0, LIMITS.maxTrim, 200),
+		pager: props.pager === true,
 	};
 }
 
@@ -181,3 +184,25 @@ export function categoryOptions(all: readonly Term[]): Array<{ value: string; la
 
 /** CSS-safe class suffix for a mode key (already `[a-z0-9-]`). */
 export const modeClass = (mode: string) => mode.replace(/[^a-z0-9-]/g, '');
+
+/** The list page to show from its URL parameter (`?<nodeId>=2`): 1 when absent or out of range. */
+export function pageNumber(raw: string | null, totalPages: number): number {
+	if (raw === null || !/^\d{1,6}$/.test(raw)) return 1;
+	const n = Number(raw);
+	return n >= 1 && n <= totalPages ? n : 1;
+}
+
+/** How many list pages `matched` pages make at `perPage` each (at least 1). */
+export const pageCount = (matched: number, perPage: number): number => Math.max(1, Math.ceil(matched / perPage));
+
+/**
+ * The address of list page `n`: the current path and query with the list's parameter set (left out for
+ * page 1, the list's own address). Other parameters, including other lists' pages, are kept.
+ */
+export function pageHref(url: URL, key: string, n: number): string {
+	const params = new URLSearchParams(url.search);
+	if (n <= 1) params.delete(key);
+	else params.set(key, String(n));
+	const query = params.toString();
+	return `${url.pathname}${query ? `?${query}` : ''}`;
+}

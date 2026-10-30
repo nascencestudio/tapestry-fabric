@@ -7,6 +7,9 @@ import {
 	type ListSettings,
 	matches,
 	PAGE_LIST_TYPE,
+	pageCount,
+	pageHref,
+	pageNumber,
 	parseSettings,
 	sortPages,
 	withoutLists,
@@ -40,6 +43,7 @@ describe('the Page list’s settings', () => {
 			sort: 'newest',
 			link: true,
 			trim: 200,
+			pager: false,
 		});
 	});
 
@@ -64,6 +68,7 @@ describe('the Page list’s settings', () => {
 			sort: 'title',
 			link: false,
 			trim: 0,
+			pager: false,
 		});
 		const odd = parseSettings({ template: '<x>', mode: 'Bad Mode', sort: 'random', count: Number.NaN });
 		expect([odd.template, odd.mode, odd.sort, odd.count]).toEqual([null, 'teaser', 'newest', 5]);
@@ -178,5 +183,35 @@ describe('category choices', () => {
 			{ value: '2', label: 'News › Local' },
 			{ value: '9', label: 'Orphan' },
 		]);
+	});
+});
+
+describe('list pages', () => {
+	it('come from the list’s own parameter, page 1 when missing or out of range', () => {
+		expect(pageNumber(null, 3)).toBe(1);
+		expect(pageNumber('2', 3)).toBe(2);
+		expect(pageNumber('4', 3)).toBe(1);
+		expect(pageNumber('0', 3)).toBe(1);
+		expect(pageNumber('-1', 3)).toBe(1);
+		expect(pageNumber('2.5', 3)).toBe(1);
+		expect(pageNumber('1e3', 3)).toBe(1);
+		expect(pageNumber('9999999', 99999999)).toBe(1);
+	});
+
+	it('count at least one page', () => {
+		expect([pageCount(0, 5), pageCount(5, 5), pageCount(6, 5), pageCount(11, 5)]).toEqual([1, 1, 2, 3]);
+	});
+
+	it('link to the same page with only this list’s parameter changed', () => {
+		const url = new URL('https://example.com/news?lang=fr&other-list=3&mine=2');
+		expect(pageHref(url, 'mine', 3)).toBe('/news?lang=fr&other-list=3&mine=3');
+		expect(pageHref(url, 'mine', 1)).toBe('/news?lang=fr&other-list=3');
+		expect(pageHref(new URL('https://example.com/news'), 'mine', 1)).toBe('/news');
+	});
+
+	it('are off unless asked for', () => {
+		expect(parseSettings({}).pager).toBe(false);
+		expect(parseSettings({ pager: true }).pager).toBe(true);
+		expect(parseSettings({ pager: 'yes' }).pager).toBe(false);
 	});
 });

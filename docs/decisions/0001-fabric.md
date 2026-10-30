@@ -38,6 +38,7 @@ Settings:
 | Sort by | Newest first, Oldest first, Title A–Z | Newest first |
 | Link each item to its page | boolean | on |
 | When a page's teaser is empty: trim its Full text to | number of characters, 0 = off | 200 |
+| Show page links | boolean (then Number of pages is the page size) | off |
 
 Matching:
 - A page matches when it has **any** selected category (subcategories count as their parent) **and any**
@@ -88,3 +89,8 @@ As decided, except:
 - **Display modes are stored by Tapestry** (`@nascencestudio/tapestry/modes`), not in Fabric's own plugin data:
   Tapestry's editor, validator and renderer read them without loading Fabric.
 - **Read more** links are named "Read more: <title>" for screen readers; cards' titles are `h3` links.
+- **Page links** (added 2026-10-30, the user's request): with "Show page links", Number of pages is the page
+  size and Previous / "Page 2 of 4" / Next links follow the list (`fabric-pager`, `fabric-pager__previous`,
+  `__status`, `__next`). Each list has its own URL parameter, its node id (`?<id>=2`; Tapestry's `withNodeId`),
+  so several lists on one page page on their own and other parameters are kept. Page 1 is the plain address;
+  nonsense or out-of-range numbers show page 1. In the editor's canvas the links go nowhere.
