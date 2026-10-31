@@ -17,9 +17,10 @@ this repo has its own short one.
 
 ## Status
 
-- First version built 2026-10-23 (0.1.0, local repo; not on GitHub or npm yet). Develops against Tapestry
-  from `file:../tapestry` (branch `display-modes`, 0.7.0 unreleased); switch to the npm version once it's
-  out. The first npm release needs a one-time token (trusted publishing needs the package to exist).
+- **0.1.0 released 2026-10-31** (GitHub `nascencestudio/tapestry-fabric`, npm with provenance), on Tapestry
+  ≥ 0.7.0 (dev dependency from npm; 0.7.1 makes empty multiple-choice fields show their box). Releases: bump
+  `version`, PR, merge, GitHub release `v<version>`, approve the staged version on npmjs.com (trusted
+  publishing only; no tokens).
 
 ## Rules
 
